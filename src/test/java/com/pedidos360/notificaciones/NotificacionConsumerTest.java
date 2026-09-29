@@ -37,7 +37,7 @@ class NotificacionConsumerTest {
   private static OrdenRegistradaEvent eventoValido() {
     return new OrdenRegistradaEvent(
         UUID.randomUUID(), "usuario-1",
-        List.of(new OrdenRegistradaEvent.Item(UUID.randomUUID(), 1)));
+        List.of(new OrdenRegistradaEvent.Item(UUID.randomUUID(), 1)), null);
   }
 
   @Test
@@ -52,7 +52,7 @@ class NotificacionConsumerTest {
 
   @Test
   void invalido_dlqDirecto() throws Exception {
-    OrdenRegistradaEvent event = new OrdenRegistradaEvent(UUID.randomUUID(), "u-1", List.of());
+    OrdenRegistradaEvent event = new OrdenRegistradaEvent(UUID.randomUUID(), "u-1", List.of(), null);
 
     consumer.notificarOrden(event, channel, TAG, new Message(new byte[0], new MessageProperties()));
 
@@ -69,5 +69,24 @@ class NotificacionConsumerTest {
     consumer.notificarOrden(event, channel, TAG, new Message(new byte[0], new MessageProperties()));
 
     verify(channel).basicNack(TAG, false, true);
+  }
+
+  // Regresión Fase 6 (AWS): el evento real trae campo codigoCupon (agregado
+  // en Fase 4). Jackson es estricto: sin codigoCupon en el espejo, todo
+  // evento real caía a la DLQ (UnrecognizedPropertyException). El listener
+  // tipado ignora el __TypeId__ foráneo (precedente: ms-productos consume
+  // el mismo evento sin mapeos), así que el contrato que importa es el JSON.
+  @Test
+  void eventoRealDelBroker_deserializaConCupon() throws Exception {
+    UUID orden = UUID.randomUUID();
+    UUID prod = UUID.randomUUID();
+    String json = "{\"ordenId\":\"" + orden + "\",\"usuarioId\":\"u-1\",\"items\":"
+        + "[{\"productoId\":\"" + prod + "\",\"cantidad\":1}],\"codigoCupon\":null}";
+
+    OrdenRegistradaEvent out =
+        new com.fasterxml.jackson.databind.ObjectMapper().readValue(json, OrdenRegistradaEvent.class);
+
+    org.junit.jupiter.api.Assertions.assertEquals(orden, out.ordenId());
+    org.junit.jupiter.api.Assertions.assertEquals(1, out.items().size());
   }
 }
