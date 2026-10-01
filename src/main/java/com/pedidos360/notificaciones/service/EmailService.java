@@ -16,14 +16,11 @@ public class EmailService {
 
   private final JavaMailSender mailSender;
   private final String from;
-  private final String bandejaDemo;
 
   public EmailService(JavaMailSender mailSender,
-      @Value("${app.mail.from:}") String from,
-      @Value("${app.mail.to:}") String bandejaDemo) {
+      @Value("${app.mail.from:}") String from) {
     this.mailSender = mailSender;
     this.from = from;
-    this.bandejaDemo = bandejaDemo;
   }
 
   /** Envío directo (endpoint de Postman). */
@@ -43,9 +40,9 @@ public class EmailService {
     mailSender.send(msg);
   }
 
-  /** Confirmación de compra ante orden.registrada (va a la bandeja demo). */
-  public void enviarConfirmacionOrden(UUID ordenId, int cantidadItems) {
-    enviar(bandejaDemo,
+  /** Confirmación de compra ante orden.registrada (va al comprador). */
+  public void enviarConfirmacionOrden(UUID ordenId, int cantidadItems, String emailComprador) {
+    enviar(emailComprador,
         "Pedidos360: tu orden " + ordenId + " quedó registrada",
         "Hola,\n\nTu compra de " + cantidadItems + " ítem(s) (orden " + ordenId
             + ") quedó registrada y está en preparación.\n\nGracias por comprar en Pedidos360.");

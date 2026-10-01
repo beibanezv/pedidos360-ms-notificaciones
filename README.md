@@ -6,7 +6,8 @@ Sin base de datos: consume un evento y manda un correo.
 ## Qué hace
 
 1. Consume `orden.registrada` de `p360.notificaciones.queue`.
-2. Manda el correo de confirmación a la bandeja demo (`MAIL_TO`).
+2. Manda el correo de confirmación al `emailComprador` del evento
+   (obligatorio desde el checkout: sin email no hay compra).
 3. Expone `POST /api/notificaciones/enviar` para disparo directo
    (lo exige el enunciado: debe poder probarse desde Postman).
 

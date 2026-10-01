@@ -36,7 +36,7 @@ class NotificacionConsumerTest {
 
   private static OrdenRegistradaEvent eventoValido() {
     return new OrdenRegistradaEvent(
-        UUID.randomUUID(), "usuario-1",
+        UUID.randomUUID(), "usuario-1", "comprador@mail.com",
         List.of(new OrdenRegistradaEvent.Item(UUID.randomUUID(), 1)), null);
   }
 
@@ -46,17 +46,29 @@ class NotificacionConsumerTest {
 
     consumer.notificarOrden(event, channel, TAG, new Message(new byte[0], new MessageProperties()));
 
-    verify(emailService).enviarConfirmacionOrden(event.ordenId(), 1);
+    verify(emailService).enviarConfirmacionOrden(event.ordenId(), 1, "comprador@mail.com");
     verify(channel).basicAck(TAG, false);
   }
 
   @Test
   void invalido_dlqDirecto() throws Exception {
-    OrdenRegistradaEvent event = new OrdenRegistradaEvent(UUID.randomUUID(), "u-1", List.of(), null);
+    OrdenRegistradaEvent event = new OrdenRegistradaEvent(UUID.randomUUID(), "u-1",
+        "comprador@mail.com", List.of(), null);
 
     consumer.notificarOrden(event, channel, TAG, new Message(new byte[0], new MessageProperties()));
 
-    verify(emailService, never()).enviarConfirmacionOrden(any(), anyInt());
+    verify(emailService, never()).enviarConfirmacionOrden(any(), anyInt(), any());
+    verify(channel).basicNack(TAG, false, false);
+  }
+
+  @Test
+  void sinEmail_dlqDirecto() throws Exception {
+    OrdenRegistradaEvent event = new OrdenRegistradaEvent(UUID.randomUUID(), "u-1", "  ",
+        List.of(new OrdenRegistradaEvent.Item(UUID.randomUUID(), 1)), null);
+
+    consumer.notificarOrden(event, channel, TAG, new Message(new byte[0], new MessageProperties()));
+
+    verify(emailService, never()).enviarConfirmacionOrden(any(), anyInt(), any());
     verify(channel).basicNack(TAG, false, false);
   }
 
@@ -64,7 +76,7 @@ class NotificacionConsumerTest {
   void smtpCaido_reintenta() throws Exception {
     OrdenRegistradaEvent event = eventoValido();
     Mockito.doThrow(new MailSendException("smtp caído"))
-        .when(emailService).enviarConfirmacionOrden(any(), anyInt());
+        .when(emailService).enviarConfirmacionOrden(any(), anyInt(), any());
 
     consumer.notificarOrden(event, channel, TAG, new Message(new byte[0], new MessageProperties()));
 
@@ -77,16 +89,18 @@ class NotificacionConsumerTest {
   // tipado ignora el __TypeId__ foráneo (precedente: ms-productos consume
   // el mismo evento sin mapeos), así que el contrato que importa es el JSON.
   @Test
-  void eventoRealDelBroker_deserializaConCupon() throws Exception {
+  void eventoRealDelBroker_deserializaConCuponYEmail() throws Exception {
     UUID orden = UUID.randomUUID();
     UUID prod = UUID.randomUUID();
-    String json = "{\"ordenId\":\"" + orden + "\",\"usuarioId\":\"u-1\",\"items\":"
+    String json = "{\"ordenId\":\"" + orden + "\",\"usuarioId\":\"u-1\","
+        + "\"emailComprador\":\"comprador@mail.com\",\"items\":"
         + "[{\"productoId\":\"" + prod + "\",\"cantidad\":1}],\"codigoCupon\":null}";
 
     OrdenRegistradaEvent out =
         new com.fasterxml.jackson.databind.ObjectMapper().readValue(json, OrdenRegistradaEvent.class);
 
     org.junit.jupiter.api.Assertions.assertEquals(orden, out.ordenId());
+    org.junit.jupiter.api.Assertions.assertEquals("comprador@mail.com", out.emailComprador());
     org.junit.jupiter.api.Assertions.assertEquals(1, out.items().size());
   }
 }

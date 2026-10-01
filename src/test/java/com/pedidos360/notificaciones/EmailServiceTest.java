@@ -24,7 +24,7 @@ class EmailServiceTest {
 
   @Test
   void enviar_directo_mandaAlDestino() {
-    EmailService service = new EmailService(mailSender, "remitente@x.com", "demo@x.com");
+    EmailService service = new EmailService(mailSender, "remitente@x.com");
 
     service.enviar("destino@x.com", "Hola", "Cuerpo");
 
@@ -36,7 +36,7 @@ class EmailServiceTest {
 
   @Test
   void enviar_sinDestino_fallaSinMandar() {
-    EmailService service = new EmailService(mailSender, "remitente@x.com", "demo@x.com");
+    EmailService service = new EmailService(mailSender, "remitente@x.com");
 
     assertThrows(IllegalArgumentException.class,
         () -> service.enviar("  ", "Hola", "Cuerpo"));
@@ -44,14 +44,23 @@ class EmailServiceTest {
   }
 
   @Test
-  void confirmacion_vaALaBandejaDemo() {
-    EmailService service = new EmailService(mailSender, "remitente@x.com", "demo@x.com");
+  void confirmacion_vaAlComprador() {
+    EmailService service = new EmailService(mailSender, "remitente@x.com");
     UUID ordenId = UUID.randomUUID();
 
-    service.enviarConfirmacionOrden(ordenId, 2);
+    service.enviarConfirmacionOrden(ordenId, 2, "comprador@mail.com");
 
     ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
     verify(mailSender).send(captor.capture());
-    assertEquals("demo@x.com", captor.getValue().getTo()[0]);
+    assertEquals("comprador@mail.com", captor.getValue().getTo()[0]);
+  }
+
+  @Test
+  void confirmacion_sinEmail_fallaSinMandar() {
+    EmailService service = new EmailService(mailSender, "remitente@x.com");
+
+    assertThrows(IllegalArgumentException.class,
+        () -> service.enviarConfirmacionOrden(UUID.randomUUID(), 1, "  "));
+    verify(mailSender, never()).send(any(SimpleMailMessage.class));
   }
 }

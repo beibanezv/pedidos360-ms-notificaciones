@@ -14,7 +14,8 @@ import org.springframework.stereotype.Component;
  * Consumidor del dominio "notificaciones".
  *
  * Decisiones de error (indicador 5):
- * - Evento inválido → PERMANENTE → DLQ directo.
+ * - Evento inválido (incluido email vacío: sin destinatario no hay nada
+ *   que intentar) → PERMANENTE → DLQ directo.
  * - Fallo de SMTP (MailException) → TRANSITORIO → requeue hasta
  *   MAX_REINTENTOS, después DLQ. Ojo: si las credenciales están mal, el
  *   mensaje va a gastar los 3 reintentos y caer a la DLQ; el síntoma se ve
@@ -39,10 +40,12 @@ public class NotificacionConsumer extends BaseConsumer {
       @Header(AmqpHeaders.DELIVERY_TAG) long tag, Message raw) throws IOException {
     consumir(channel, tag, raw, () -> {
       if (event == null || event.ordenId() == null
+          || event.emailComprador() == null || event.emailComprador().isBlank()
           || event.items() == null || event.items().isEmpty()) {
         throw new IllegalArgumentException("orden.registrada inválida: " + event);
       }
-      emailService.enviarConfirmacionOrden(event.ordenId(), event.items().size());
+      emailService.enviarConfirmacionOrden(event.ordenId(), event.items().size(),
+          event.emailComprador());
     });
   }
 }
