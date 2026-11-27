@@ -13,8 +13,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Disparo directo de correos (para probar desde Postman, como pide el
- * enunciado). Sin Spring Security a propósito: en AWS lo protege el
- * authorizer JWT del API Gateway (igual que ms-admin y ms-orders).
+ * enunciado). En AWS lo protege el authorizer JWT del API Gateway y aquí
+ * Spring Security exige ROLE_Admin de Entra: una cuenta compradora no puede
+ * pedir correos a un destinatario arbitrario.
  */
 @RestController
 @RequestMapping("/api/notificaciones")
