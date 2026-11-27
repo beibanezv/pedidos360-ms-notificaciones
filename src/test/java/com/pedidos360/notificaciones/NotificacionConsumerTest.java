@@ -23,6 +23,7 @@ import org.springframework.mail.MailSendException;
 
 @ExtendWith(MockitoExtension.class)
 class NotificacionConsumerTest {
+  static { System.setProperty("p360.retry.espera-ms", "0"); }
 
   @Mock
   EmailService emailService;
@@ -80,7 +81,7 @@ class NotificacionConsumerTest {
 
     consumer.notificarOrden(event, channel, TAG, new Message(new byte[0], new MessageProperties()));
 
-    verify(channel).basicNack(TAG, false, true);
+    verify(channel).basicNack(TAG, false, false);
   }
 
   // Regresión Fase 6 (AWS): el evento real trae campo codigoCupon (agregado
